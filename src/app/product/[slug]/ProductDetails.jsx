@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "react-toastify";
 import { authClient } from "@/lib/auth-client";
 
 const BASE_URL = "https://api.abcz.workers.dev/api/bazardor";
@@ -37,6 +38,7 @@ const ProductDetails = ({ slug }) => {
 
     useEffect(() => {
         if (!isPending && !user) {
+            toast.info("পণ্য দেখতে আগে সাইন ইন করো।");
             router.replace("/sign-in");
         }
     }, [isPending, user, router]);
@@ -101,7 +103,6 @@ const ProductDetails = ({ slug }) => {
         };
     }, [slug, isPending, user]);
 
-    // Session যাচাই বা redirect চলাকালে loading দেখাবে
     if (isPending || !user || loading) {
         return (
             <main className="min-h-[60vh] bg-[#F7F9F7] px-4 py-10">
@@ -186,7 +187,6 @@ const ProductDetails = ({ slug }) => {
     return (
         <main className="min-h-screen bg-[#F0F5F0] px-3 py-5 text-slate-800 sm:px-6 sm:py-8">
             <div className="mx-auto max-w-6xl space-y-6">
-                {/* Breadcrumb */}
                 <nav
                     aria-label="Breadcrumb"
                     className="flex flex-wrap items-center gap-2 text-xs text-gray-500 sm:text-sm"
@@ -214,7 +214,6 @@ const ProductDetails = ({ slug }) => {
                     </span>
                 </nav>
 
-                {/* Product header */}
                 <section className="flex flex-col gap-5 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6 md:flex-row md:items-center md:justify-between">
                     <div className="flex min-w-0 items-start gap-4">
                         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-slate-100 bg-slate-50 text-3xl sm:h-16 sm:w-16">
@@ -255,7 +254,6 @@ const ProductDetails = ({ slug }) => {
                         </div>
                     </div>
 
-                    {/* Today's price */}
                     <div className="w-full rounded-xl border border-slate-100 bg-slate-50 p-4 text-center sm:p-5 md:w-auto md:min-w-44 md:text-right">
                         <span className="block text-xs font-semibold text-gray-500">
                             আজকের দাম
@@ -288,7 +286,6 @@ const ProductDetails = ({ slug }) => {
                 </section>
 
                 <div className="rounded-2xl bg-[#FAFCFA] p-5">
-                    {/* Price summary */}
                     <section>
                         <h2 className="mb-3 pl-1 text-base font-bold text-slate-900 sm:text-lg">
                             দামের সারসংক্ষেপ
@@ -343,7 +340,6 @@ const ProductDetails = ({ slug }) => {
                         </div>
                     </section>
 
-                    {/* Market prices */}
                     <section className="mt-10">
                         <h2 className="mb-3 pl-1 text-base font-bold text-slate-900 sm:text-lg">
                             বাজারভিত্তিক আজকের দাম

@@ -131,7 +131,6 @@ const NavbarPage = () => {
 
     const pathname = usePathname();
     const { data: session, isPending } = authClient.useSession();
-    console.log("Current session user:", session?.user);
     const user = session?.user;
 
     // Temporary debugging: check the image URL returned by the session.

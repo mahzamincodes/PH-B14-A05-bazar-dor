@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "react-toastify";
 import { authClient } from "@/lib/auth-client";
 
 const BASE_URL = "https://api.abcz.workers.dev/api/bazardor";
 
-const formatNumber = (value) => {
-    return new Intl.NumberFormat("bn-BD").format(Number(value) || 0);
-};
+const formatNumber = (value) =>
+    new Intl.NumberFormat("bn-BD").format(Number(value) || 0);
 
 const getUnit = (unit) => {
     const units = {
@@ -26,7 +26,6 @@ const getUnit = (unit) => {
 
 const CategoryProducts = ({ slug }) => {
     const router = useRouter();
-
     const { data: session, isPending } = authClient.useSession();
     const user = session?.user;
 
@@ -37,18 +36,19 @@ const CategoryProducts = ({ slug }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
-    // লগইন না থাকলে sign-in পেজে পাঠাবে
     useEffect(() => {
         if (!isPending && !user) {
+            toast.info("ক্যাটাগরির পণ্য দেখতে আগে সাইন ইন করো।", {
+                toastId: "category-auth-required",
+            });
             router.replace("/sign-in");
         }
     }, [isPending, user, router]);
 
-    // Session যাচাই হওয়ার পর category ও products fetch হবে
     useEffect(() => {
         let ignore = false;
 
-        if (isPending || !user) {
+        if (isPending || !user || !slug) {
             return () => {
                 ignore = true;
             };
@@ -69,12 +69,16 @@ const CategoryProducts = ({ slug }) => {
                     ),
                 ]);
 
-                if (!categoryRes.ok || !productsRes.ok) {
+                if (categoryRes.status === 404) {
                     if (!ignore) {
                         setCategory(null);
                         setProducts([]);
                     }
                     return;
+                }
+
+                if (!categoryRes.ok || !productsRes.ok) {
+                    throw new Error("API request failed");
                 }
 
                 const [categoryData, productsData] = await Promise.all([
@@ -85,13 +89,20 @@ const CategoryProducts = ({ slug }) => {
                 if (ignore) return;
 
                 const categoryInfo =
-                    categoryData?.category ||
-                    categoryData?.data ||
+                    categoryData?.category ??
+                    categoryData?.data?.category ??
+                    categoryData?.data ??
                     categoryData;
 
                 const productsList = Array.isArray(productsData)
                     ? productsData
-                    : productsData?.products || productsData?.data || [];
+                    : Array.isArray(productsData?.products)
+                      ? productsData.products
+                      : Array.isArray(productsData?.data)
+                        ? productsData.data
+                        : Array.isArray(productsData?.data?.products)
+                          ? productsData.data.products
+                          : [];
 
                 setCategory(categoryInfo);
                 setProducts(productsList);
@@ -107,9 +118,7 @@ const CategoryProducts = ({ slug }) => {
             }
         };
 
-        if (slug) {
-            fetchProducts();
-        }
+        fetchProducts();
 
         return () => {
             ignore = true;
@@ -117,21 +126,14 @@ const CategoryProducts = ({ slug }) => {
     }, [slug, isPending, user]);
 
     const sortedProducts = [...products].sort((a, b) => {
-        if (sortType === "lowToHigh") {
-            return Number(a.today) - Number(b.today);
-        }
+        const priceA = Number(a.today) || 0;
+        const priceB = Number(b.today) || 0;
 
-        if (sortType === "highToLow") {
-            return Number(b.today) - Number(a.today);
-        }
+        if (sortType === "lowToHigh") return priceA - priceB;
+        if (sortType === "highToLow") return priceB - priceA;
 
         return 0;
     });
-
-    const handleSortChange = (type) => {
-        setSortType(type);
-        setIsDropdownOpen(false);
-    };
 
     const sortOptions = [
         { value: "default", label: "ডিফল্ট" },
@@ -143,7 +145,6 @@ const CategoryProducts = ({ slug }) => {
         sortOptions.find((option) => option.value === sortType)?.label ||
         "ডিফল্ট";
 
-    // Session check ও redirect চলাকালে loading দেখাবে
     if (isPending || !user || loading) {
         return (
             <main className="min-h-screen bg-[#F0F5F0] px-3 py-6 sm:px-6 sm:py-8">
@@ -162,13 +163,11 @@ const CategoryProducts = ({ slug }) => {
                             >
                                 <div className="mb-5 flex items-center gap-3">
                                     <div className="h-10 w-10 rounded-full bg-gray-200" />
-
                                     <div className="flex-1 space-y-2">
                                         <div className="h-4 w-2/3 rounded bg-gray-200" />
                                         <div className="h-3 w-1/3 rounded bg-gray-100" />
                                     </div>
                                 </div>
-
                                 <div className="h-5 w-1/2 rounded bg-gray-200" />
                             </div>
                         ))}
@@ -183,13 +182,10 @@ const CategoryProducts = ({ slug }) => {
             <main className="flex min-h-[60vh] items-center justify-center bg-[#F0F5F0] px-4 py-10">
                 <div className="max-w-md rounded-2xl bg-white p-6 text-center shadow-sm sm:p-8">
                     <p className="mb-3 text-4xl">⚠️</p>
-
                     <h1 className="text-xl font-bold text-gray-800">
                         তথ্য লোড করা যায়নি
                     </h1>
-
                     <p className="mt-2 text-sm text-gray-500">{error}</p>
-
                     <button
                         onClick={() => window.location.reload()}
                         className="mt-5 rounded-lg bg-green-700 px-5 py-3 text-sm font-semibold text-white hover:bg-green-800"
@@ -206,15 +202,12 @@ const CategoryProducts = ({ slug }) => {
             <main className="flex min-h-[60vh] items-center justify-center bg-[#F0F5F0] px-4 py-10">
                 <div className="max-w-md rounded-2xl bg-white p-6 text-center shadow-sm sm:p-8">
                     <p className="mb-3 text-5xl">🔎</p>
-
                     <h1 className="text-xl font-bold text-gray-800 sm:text-2xl">
                         ক্যাটাগরি পাওয়া যায়নি!
                     </h1>
-
                     <p className="mt-2 text-sm text-gray-500">
                         এই ক্যাটাগরিতে কোনো পণ্য নেই অথবা ঠিকানা সঠিক নয়।
                     </p>
-
                     <Link
                         href="/"
                         className="mt-5 inline-flex rounded-lg bg-green-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-green-800"
@@ -229,7 +222,6 @@ const CategoryProducts = ({ slug }) => {
     return (
         <main className="min-h-screen bg-[#F0F5F0] px-3 py-5 font-sans sm:px-4 sm:py-6 md:px-6 md:py-8">
             <div className="mx-auto max-w-6xl space-y-4 sm:space-y-5 md:space-y-6">
-                {/* Category heading */}
                 <section className="flex items-center gap-3 rounded-xl border border-[#EAECF0] bg-white p-4 sm:gap-4 sm:p-6">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#F2F4F7] text-2xl sm:h-14 sm:w-14">
                         {category?.icon || products[0]?.categoryIcon || "🛒"}
@@ -242,7 +234,6 @@ const CategoryProducts = ({ slug }) => {
                                 products[0]?.categoryNameBn ||
                                 "পণ্যের ক্যাটাগরি"}
                         </h1>
-
                         <p className="mt-1 text-xs text-[#667085] sm:text-sm">
                             {formatNumber(products.length)}টি পণ্যের আজকের দাম ও
                             পরিবর্তন
@@ -250,7 +241,6 @@ const CategoryProducts = ({ slug }) => {
                     </div>
                 </section>
 
-                {/* Sorting */}
                 <section className="flex justify-end rounded-xl border border-[#EAECF0] bg-white p-3 sm:p-4">
                     <div className="relative flex items-center gap-2">
                         <label className="text-xs text-[#475467] sm:text-sm">
@@ -266,22 +256,7 @@ const CategoryProducts = ({ slug }) => {
                             className="flex items-center gap-2 rounded-lg border border-[#D0D5DD] bg-white px-3 py-2 text-xs font-medium text-[#344054] transition hover:bg-gray-50 sm:text-sm"
                         >
                             <span>{currentSortLabel}</span>
-
-                            <svg
-                                className={`h-4 w-4 transition-transform ${
-                                    isDropdownOpen ? "rotate-180" : ""
-                                }`}
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    d="m19 9-7 7-7-7"
-                                />
-                            </svg>
+                            <span>▾</span>
                         </button>
 
                         {isDropdownOpen && (
@@ -290,9 +265,10 @@ const CategoryProducts = ({ slug }) => {
                                     <button
                                         key={option.value}
                                         type="button"
-                                        onClick={() =>
-                                            handleSortChange(option.value)
-                                        }
+                                        onClick={() => {
+                                            setSortType(option.value);
+                                            setIsDropdownOpen(false);
+                                        }}
                                         className={`w-full px-4 py-3 text-left transition hover:bg-gray-50 ${
                                             sortType === option.value
                                                 ? "bg-green-50 font-semibold text-green-700"
@@ -313,19 +289,18 @@ const CategoryProducts = ({ slug }) => {
                     হচ্ছে
                 </p>
 
-                {/* Product cards */}
                 <section
                     aria-label="ক্যাটাগরির পণ্যসমূহ"
                     className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 lg:gap-5"
                 >
-                    {sortedProducts.map((product) => {
+                    {sortedProducts.map((product, index) => {
                         const isUp = product.change?.dir === "up";
                         const isDown = product.change?.dir === "down";
 
                         return (
                             <Link
-                                key={product.id}
-                                href={`/product/${product.slug}`}
+                                key={product.id ?? index}
+                                href={`/product/${product.slug ?? product.id}`}
                                 className="flex min-h-37.5 flex-col justify-between rounded-2xl border border-[#EAECF0] bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700 sm:p-5"
                             >
                                 <div className="flex items-center gap-3">
@@ -337,9 +312,11 @@ const CategoryProducts = ({ slug }) => {
 
                                     <div className="min-w-0">
                                         <h2 className="truncate text-sm font-bold text-[#1D2939] sm:text-base">
-                                            {product.nameBn}
+                                            {product.nameBn ||
+                                                product.name ||
+                                                product.title ||
+                                                "পণ্যের নাম নেই"}
                                         </h2>
-
                                         <p className="mt-1 text-xs text-[#667085]">
                                             প্রতি {getUnit(product.unit)}
                                         </p>
@@ -351,7 +328,6 @@ const CategoryProducts = ({ slug }) => {
                                         <p className="text-xs text-[#667085]">
                                             আজকের দাম
                                         </p>
-
                                         <p className="mt-1 text-lg font-extrabold text-[#1D2939] sm:text-xl">
                                             {formatNumber(product.today)} টাকা
                                         </p>
