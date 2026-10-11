@@ -1,5 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
+import { ToastContainer } from "react-toastify";
 
 import "./globals.css";
 
@@ -30,6 +31,12 @@ export default function RootLayout({ children }) {
             className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
         >
             <body className="flex min-h-full flex-col">
+                <ToastContainer
+                    position="top-right"
+                    autoClose={3000}
+                    theme="light"
+                />
+
                 <Suspense fallback={null}>
                     <NavbarPage />
                 </Suspense>

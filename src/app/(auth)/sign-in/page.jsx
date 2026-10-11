@@ -1,10 +1,74 @@
+
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-
+import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
 import { FaGithub, FaGoogle } from "react-icons/fa";
+import { authClient } from "@/lib/auth-client";
 
 const SignInPage = () => {
+    const router = useRouter();
+
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [socialLoading, setSocialLoading] = useState("");
+
+    const handleSignIn = async (e) => {
+        e.preventDefault();
+
+        if (!email.trim() || !password) {
+            toast.error("ইমেইল ও পাসওয়ার্ড দাও।");
+            return;
+        }
+
+        try {
+            setLoading(true);
+
+            const { error } = await authClient.signIn.email({
+                email: email.trim(),
+                password,
+            });
+
+            if (error) {
+                toast.error(error.message || "ইমেইল অথবা পাসওয়ার্ড সঠিক নয়।");
+                return;
+            }
+
+            toast.success("Sign in successful!");
+
+            setTimeout(() => {
+                router.push("/");
+                router.refresh();
+            }, 800);
+        } catch (error) {
+            toast.error(error.message || "সাইন ইন করা যায়নি।");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSocialSignIn = async (provider) => {
+        try {
+            setSocialLoading(provider);
+
+            const { error } = await authClient.signIn.social({
+                provider,
+                callbackURL: "/",
+            });
+
+            if (error) {
+                toast.error(error.message || "Social sign in ব্যর্থ হয়েছে।");
+                setSocialLoading("");
+            }
+        } catch (error) {
+            toast.error(error.message || "কিছু একটা সমস্যা হয়েছে।");
+            setSocialLoading("");
+        }
+    };
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-[#F0F5F0] px-4 py-8">
             <div className="w-full max-w-120 p-6 sm:p-8 bg-white rounded-lg border border-gray-100 shadow-sm font-sans">
@@ -17,11 +81,7 @@ const SignInPage = () => {
                     ঢুকুন।
                 </p>
 
-                <form
-                    onSubmit={(e) => e.preventDefault()}
-                    className="flex flex-col gap-4"
-                >
-                    {/* Email */}
+                <form onSubmit={handleSignIn} className="flex flex-col gap-4">
                     <div className="flex flex-col gap-1.5">
                         <label className="text-sm font-medium text-gray-700">
                             ইমেইল
@@ -29,12 +89,15 @@ const SignInPage = () => {
 
                         <input
                             type="email"
+                            name="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
                             placeholder="you@example.com"
+                            autoComplete="email"
                             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md outline-none focus:border-green-600 transition-colors"
                         />
                     </div>
 
-                    {/* Password */}
                     <div className="flex flex-col gap-1.5">
                         <label className="text-sm font-medium text-gray-700">
                             পাসওয়ার্ড
@@ -42,21 +105,24 @@ const SignInPage = () => {
 
                         <input
                             type="password"
-                            placeholder="কমপক্ষে ৮ অক্ষর"
+                            name="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="তোমার পাসওয়ার্ড"
+                            autoComplete="current-password"
                             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md outline-none focus:border-green-600 transition-colors"
                         />
                     </div>
 
-                    {/* Sign In Button */}
                     <button
                         type="submit"
-                        className="w-full mt-2 bg-[#008744] hover:bg-[#007038] text-white py-2.5 rounded-md font-semibold text-base transition-colors cursor-pointer"
+                        disabled={loading || !!socialLoading}
+                        className="w-full mt-2 bg-[#008744] hover:bg-[#007038] disabled:opacity-60 text-white py-2.5 rounded-md font-semibold text-base transition-colors cursor-pointer disabled:cursor-not-allowed"
                     >
-                        সাইন ইন
+                        {loading ? "সাইন ইন হচ্ছে..." : "সাইন ইন"}
                     </button>
                 </form>
 
-                {/* Divider */}
                 <div className="relative flex py-5 items-center justify-center">
                     <div className="grow border-t border-gray-200"></div>
 
@@ -67,28 +133,34 @@ const SignInPage = () => {
                     <div className="grow border-t border-gray-200"></div>
                 </div>
 
-                {/* Social Login */}
                 <div className="flex flex-col sm:flex-row gap-3 mb-5">
                     <button
                         type="button"
-                        className="flex-1 flex items-center justify-center gap-2 py-2 px-3 text-xs sm:text-sm font-medium text-gray-700 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors cursor-pointer"
+                        onClick={() => handleSocialSignIn("google")}
+                        disabled={loading || !!socialLoading}
+                        className="flex-1 flex items-center justify-center gap-2 py-2 px-3 text-xs sm:text-sm font-medium text-gray-700 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-60"
                     >
                         <FaGoogle className="text-base" />
-                        Google দিয়ে চালিয়ে যান
+                        {socialLoading === "google"
+                            ? "অপেক্ষা করো..."
+                            : "Google দিয়ে চালিয়ে যান"}
                     </button>
 
                     <button
                         type="button"
-                        className="flex-1 flex items-center justify-center gap-2 py-2 px-3 text-xs sm:text-sm font-medium text-gray-700 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors cursor-pointer"
+                        onClick={() => handleSocialSignIn("github")}
+                        disabled={loading || !!socialLoading}
+                        className="flex-1 flex items-center justify-center gap-2 py-2 px-3 text-xs sm:text-sm font-medium text-gray-700 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-60"
                     >
                         <FaGithub className="text-lg" />
-                        GitHub দিয়ে চালিয়ে যান
+                        {socialLoading === "github"
+                            ? "অপেক্ষা করো..."
+                            : "GitHub দিয়ে চালিয়ে যান"}
                     </button>
                 </div>
 
-                {/* Sign Up */}
                 <p className="text-center text-sm text-gray-600">
-                    অ্যাকাউন্ট আছে?
+                    অ্যাকাউন্ট নেই?
                     <Link
                         href="/sign-up"
                         className="text-[#008744] hover:underline font-medium ml-1"
@@ -97,7 +169,6 @@ const SignInPage = () => {
                     </Link>
                 </p>
 
-                {/* Home */}
                 <div className="text-center mt-6">
                     <Link
                         href="/"

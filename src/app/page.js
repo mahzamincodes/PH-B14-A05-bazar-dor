@@ -7,9 +7,11 @@ export default function Home() {
   return (
     <div className="bg-[#F0F5F0]">
        <Hero/>
+
        <PriceRisers/>
        <PriceFallers/>
        <AllProducts/>
+       
     </div>
   );
 }

@@ -2,11 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
 
 const PriceRisers = () => {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+
+    const router = useRouter();
+    const { data: session, isPending } = authClient.useSession();
+    const user = session?.user;
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -41,6 +47,18 @@ const PriceRisers = () => {
 
         fetchProducts();
     }, []);
+
+    const handleProductClick = (e) => {
+        if (isPending) {
+            e.preventDefault();
+            return;
+        }
+
+        if (!user) {
+            e.preventDefault();
+            router.push("/sign-in");
+        }
+    };
 
     const toBanglaNumber = (num) => {
         if (num === undefined || num === null) return "";
@@ -106,6 +124,7 @@ const PriceRisers = () => {
                             <Link
                                 href={`/product/${product.slug}`}
                                 key={product.id}
+                                onClick={handleProductClick}
                                 className="flex min-h-36.25 flex-col justify-between rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
                             >
                                 <div className="flex items-start gap-4">

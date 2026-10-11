@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { authClient } from "@/lib/auth-client";
 
 const BASE_URL = "https://api.abcz.workers.dev/api/bazardor";
 
@@ -23,6 +25,11 @@ const getUnit = (unit) => {
 };
 
 const CategoryProducts = ({ slug }) => {
+    const router = useRouter();
+
+    const { data: session, isPending } = authClient.useSession();
+    const user = session?.user;
+
     const [products, setProducts] = useState([]);
     const [sortType, setSortType] = useState("default");
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -30,8 +37,22 @@ const CategoryProducts = ({ slug }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
+    // লগইন না থাকলে sign-in পেজে পাঠাবে
+    useEffect(() => {
+        if (!isPending && !user) {
+            router.replace("/sign-in");
+        }
+    }, [isPending, user, router]);
+
+    // Session যাচাই হওয়ার পর category ও products fetch হবে
     useEffect(() => {
         let ignore = false;
+
+        if (isPending || !user) {
+            return () => {
+                ignore = true;
+            };
+        }
 
         const fetchProducts = async () => {
             setLoading(true);
@@ -86,12 +107,14 @@ const CategoryProducts = ({ slug }) => {
             }
         };
 
-        fetchProducts();
+        if (slug) {
+            fetchProducts();
+        }
 
         return () => {
             ignore = true;
         };
-    }, [slug]);
+    }, [slug, isPending, user]);
 
     const sortedProducts = [...products].sort((a, b) => {
         if (sortType === "lowToHigh") {
@@ -120,7 +143,8 @@ const CategoryProducts = ({ slug }) => {
         sortOptions.find((option) => option.value === sortType)?.label ||
         "ডিফল্ট";
 
-    if (loading) {
+    // Session check ও redirect চলাকালে loading দেখাবে
+    if (isPending || !user || loading) {
         return (
             <main className="min-h-screen bg-[#F0F5F0] px-3 py-6 sm:px-6 sm:py-8">
                 <div className="mx-auto max-w-6xl animate-pulse space-y-6">
@@ -138,6 +162,7 @@ const CategoryProducts = ({ slug }) => {
                             >
                                 <div className="mb-5 flex items-center gap-3">
                                     <div className="h-10 w-10 rounded-full bg-gray-200" />
+
                                     <div className="flex-1 space-y-2">
                                         <div className="h-4 w-2/3 rounded bg-gray-200" />
                                         <div className="h-3 w-1/3 rounded bg-gray-100" />
@@ -158,9 +183,11 @@ const CategoryProducts = ({ slug }) => {
             <main className="flex min-h-[60vh] items-center justify-center bg-[#F0F5F0] px-4 py-10">
                 <div className="max-w-md rounded-2xl bg-white p-6 text-center shadow-sm sm:p-8">
                     <p className="mb-3 text-4xl">⚠️</p>
+
                     <h1 className="text-xl font-bold text-gray-800">
                         তথ্য লোড করা যায়নি
                     </h1>
+
                     <p className="mt-2 text-sm text-gray-500">{error}</p>
 
                     <button
@@ -179,9 +206,11 @@ const CategoryProducts = ({ slug }) => {
             <main className="flex min-h-[60vh] items-center justify-center bg-[#F0F5F0] px-4 py-10">
                 <div className="max-w-md rounded-2xl bg-white p-6 text-center shadow-sm sm:p-8">
                     <p className="mb-3 text-5xl">🔎</p>
+
                     <h1 className="text-xl font-bold text-gray-800 sm:text-2xl">
                         ক্যাটাগরি পাওয়া যায়নি!
                     </h1>
+
                     <p className="mt-2 text-sm text-gray-500">
                         এই ক্যাটাগরিতে কোনো পণ্য নেই অথবা ঠিকানা সঠিক নয়।
                     </p>

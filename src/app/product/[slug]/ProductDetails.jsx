@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { authClient } from "@/lib/auth-client";
 
 const BASE_URL = "https://api.abcz.workers.dev/api/bazardor";
 
@@ -24,12 +26,29 @@ const getUnit = (unit) => {
 };
 
 const ProductDetails = ({ slug }) => {
+    const router = useRouter();
+
+    const { data: session, isPending } = authClient.useSession();
+    const user = session?.user;
+
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
     useEffect(() => {
+        if (!isPending && !user) {
+            router.replace("/sign-in");
+        }
+    }, [isPending, user, router]);
+
+    useEffect(() => {
         let ignore = false;
+
+        if (isPending || !user) {
+            return () => {
+                ignore = true;
+            };
+        }
 
         const fetchProductData = async () => {
             setLoading(true);
@@ -80,13 +99,15 @@ const ProductDetails = ({ slug }) => {
         return () => {
             ignore = true;
         };
-    }, [slug]);
+    }, [slug, isPending, user]);
 
-    if (loading) {
+    // Session যাচাই বা redirect চলাকালে loading দেখাবে
+    if (isPending || !user || loading) {
         return (
             <main className="min-h-[60vh] bg-[#F7F9F7] px-4 py-10">
                 <div className="mx-auto max-w-6xl animate-pulse space-y-5">
                     <div className="h-28 rounded-2xl bg-white" />
+
                     <div className="grid gap-4 md:grid-cols-3">
                         {Array.from({ length: 3 }).map((_, index) => (
                             <div
@@ -95,6 +116,7 @@ const ProductDetails = ({ slug }) => {
                             />
                         ))}
                     </div>
+
                     <div className="h-48 rounded-2xl bg-white" />
                 </div>
             </main>
@@ -106,12 +128,15 @@ const ProductDetails = ({ slug }) => {
             <main className="flex min-h-[60vh] items-center justify-center bg-[#F7F9F7] px-4 py-10">
                 <div className="max-w-md rounded-2xl bg-white p-6 text-center shadow-sm sm:p-8">
                     <p className="text-4xl">🔎</p>
+
                     <h1 className="mt-3 text-xl font-bold text-slate-900">
                         পণ্য পাওয়া যায়নি!
                     </h1>
+
                     <p className="mt-2 text-sm text-slate-500">
                         {error || "এই পণ্যের তথ্য পাওয়া যায়নি।"}
                     </p>
+
                     <Link
                         href="/"
                         className="mt-5 inline-flex rounded-lg bg-green-700 px-5 py-3 text-sm font-semibold text-white hover:bg-green-800"
@@ -153,6 +178,7 @@ const ProductDetails = ({ slug }) => {
     const today = Number(product.today) || 0;
     const yesterday = Number(product.yesterday) || 0;
     const priceDiff = Math.abs(today - yesterday);
+
     const changeDirection = product.change?.dir;
     const isUp = changeDirection === "up";
     const isDown = changeDirection === "down";
@@ -171,14 +197,18 @@ const ProductDetails = ({ slug }) => {
                     >
                         হোম
                     </Link>
+
                     <span aria-hidden="true">›</span>
+
                     <Link
                         href={`/category/${product.category}`}
                         className="hover:text-green-700 hover:underline"
                     >
                         {product.categoryNameBn || "ক্যাটাগরি"}
                     </Link>
+
                     <span aria-hidden="true">›</span>
+
                     <span className="font-medium text-slate-700">
                         {product.nameBn}
                     </span>
@@ -206,7 +236,7 @@ const ProductDetails = ({ slug }) => {
                                 <span
                                     className={`font-semibold ${
                                         isUp
-                                            ? "font-bold"
+                                            ? "text-rose-600"
                                             : isDown
                                               ? "text-emerald-600"
                                               : "text-slate-700"
@@ -257,7 +287,7 @@ const ProductDetails = ({ slug }) => {
                     </div>
                 </section>
 
-                <div className="bg-[#FAFCFA] p-5 rounded-2xl">
+                <div className="rounded-2xl bg-[#FAFCFA] p-5">
                     {/* Price summary */}
                     <section>
                         <h2 className="mb-3 pl-1 text-base font-bold text-slate-900 sm:text-lg">
@@ -269,11 +299,13 @@ const ProductDetails = ({ slug }) => {
                                 <span className="block text-xs font-medium text-gray-500">
                                     সর্বনিম্ন দাম
                                 </span>
+
                                 <span className="mt-1 block text-2xl font-bold text-emerald-600">
                                     {minPriceOverall === null
                                         ? "তথ্য নেই"
                                         : `${formatNumber(minPriceOverall)} টাকা`}
                                 </span>
+
                                 <span className="mt-2 block text-xs font-bold">
                                     সবচেয়ে কম দামের বাজার
                                 </span>
@@ -283,11 +315,13 @@ const ProductDetails = ({ slug }) => {
                                 <span className="block text-xs font-medium text-gray-500">
                                     সর্বাধিক দাম
                                 </span>
+
                                 <span className="mt-1 block text-2xl font-bold text-rose-600">
                                     {maxPriceOverall === null
                                         ? "তথ্য নেই"
                                         : `${formatNumber(maxPriceOverall)} টাকা`}
                                 </span>
+
                                 <span className="mt-2 block text-xs font-bold">
                                     সবচেয়ে বেশি দামের বাজার
                                 </span>
@@ -297,11 +331,13 @@ const ProductDetails = ({ slug }) => {
                                 <span className="block text-xs font-medium text-gray-500">
                                     গড় দাম
                                 </span>
+
                                 <span className="mt-1 block text-2xl font-bold text-slate-700">
                                     {formatNumber(averagePrice)} টাকা
                                 </span>
+
                                 <span className="mt-2 block text-xs font-bold">
-                                    প্রতি কেজি-এর হিসাবে
+                                    প্রতি একক হিসাবে
                                 </span>
                             </div>
                         </div>
@@ -327,22 +363,24 @@ const ProductDetails = ({ slug }) => {
                                                 <th className="p-4 text-left font-bold">
                                                     বাজার
                                                 </th>
+
                                                 <th className="p-4 text-left font-semibold">
                                                     বিভাগ
                                                 </th>
+
                                                 <th className="p-4 text-right font-semibold">
                                                     সর্বনিম্ন
                                                 </th>
+
                                                 <th className="p-4 text-right font-semibold">
                                                     সর্বাধিক
                                                 </th>
+
                                                 <th className="p-4 text-right font-semibold">
                                                     গড়
                                                 </th>
                                             </tr>
                                         </thead>
-
-                                        {/* xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx */}
 
                                         <tbody className="divide-y-2 divide-gray-500">
                                             {markets.map((market, index) => {
@@ -359,22 +397,26 @@ const ProductDetails = ({ slug }) => {
                                                         <td className="p-4 font-semibold text-slate-900">
                                                             {market.market}
                                                         </td>
+
                                                         <td className="p-5">
                                                             {market.division ||
                                                                 "—"}
                                                         </td>
+
                                                         <td className="p-4 text-right">
                                                             {formatNumber(
                                                                 market.min,
                                                             )}{" "}
                                                             টাকা
                                                         </td>
+
                                                         <td className="p-4 text-right">
                                                             {formatNumber(
                                                                 market.max,
                                                             )}{" "}
                                                             টাকা
                                                         </td>
+
                                                         <td className="p-4 text-right font-bold text-slate-900">
                                                             {formatNumber(
                                                                 marketAverage,

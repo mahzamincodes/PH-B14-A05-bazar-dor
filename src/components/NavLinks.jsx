@@ -1,12 +1,18 @@
+
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { authClient } from "@/lib/auth-client";
 
 const NavLinksPage = () => {
     const [categories, setCategories] = useState([]);
     const pathname = usePathname();
+    const router = useRouter();
+
+    const { data: session, isPending } = authClient.useSession();
+    const user = session?.user;
 
     useEffect(() => {
         const fetchCategories = async () => {
@@ -29,6 +35,18 @@ const NavLinksPage = () => {
         fetchCategories();
     }, []);
 
+    const handleCategoryClick = (e) => {
+        if (isPending) {
+            e.preventDefault();
+            return;
+        }
+
+        if (!user) {
+            e.preventDefault();
+            router.push("/sign-in");
+        }
+    };
+
     return (
         <div className="border-b border-gray-200">
             <div className="container mx-auto px-4 py-3">
@@ -41,6 +59,9 @@ const NavLinksPage = () => {
                             <Link
                                 href={`/category/${product.slug}`}
                                 key={product.id}
+                                onClick={(e) =>
+                                    handleCategoryClick(e, product.slug)
+                                }
                                 aria-current={isActive ? "page" : undefined}
                                 className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200 md:text-base ${
                                     isActive
